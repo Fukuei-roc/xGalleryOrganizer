@@ -5,7 +5,8 @@ import imagehash
 from datetime import datetime, timedelta, timezone
 
 DB_FILENAME = 'imageRecords.db'
-IMAGE_PATH = 'PinkNight_023.png'  # 要導入的圖片
+IMAGE_FOLDER = 'pendingImages'  # 批次導入的圖片資料夾
+SUPPORTED_EXTENSIONS = ('.png', '.jpg', '.jpeg')
 
 def get_current_time_taipei():
     """取得台北時區的現在時間（ISO 格式）"""
@@ -36,6 +37,15 @@ def insert_image_record(image_path):
     series = extract_series(original_filename)
 
     conn = sqlite3.connect(DB_FILENAME)
+
+    # 若 phash 已存在則跳過
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM images WHERE phash = ?", (phash,))
+    if cursor.fetchone()[0] > 0:
+        print(f"⚠️ 已存在相同圖片（phash）：{original_filename}，跳過。")
+        conn.close()
+        return
+
     next_index = get_next_index_for_series(conn, series)
     index_str = f"{next_index:03d}"  # 補零變成三碼
 
@@ -44,7 +54,6 @@ def insert_image_record(image_path):
     created_at = get_current_time_taipei()
 
     try:
-        cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO images (
                 phash,
@@ -64,9 +73,20 @@ def insert_image_record(image_path):
         print(f"   - members_only: {members_only}")
         print(f"   - created_at: {created_at}")
     except sqlite3.IntegrityError:
-        print(f"⚠️ 資料庫已存在相同 phash 的圖片，跳過導入。")
+        print(f"⚠️ 插入失敗（可能是主鍵衝突）：{original_filename}")
     finally:
         conn.close()
 
+def process_pending_images():
+    if not os.path.isdir(IMAGE_FOLDER):
+        print(f"❌ 找不到資料夾：{IMAGE_FOLDER}")
+        return
+
+    files = sorted(os.listdir(IMAGE_FOLDER))
+    for filename in files:
+        if filename.lower().endswith(SUPPORTED_EXTENSIONS):
+            image_path = os.path.join(IMAGE_FOLDER, filename)
+            insert_image_record(image_path)
+
 if __name__ == '__main__':
-    insert_image_record(IMAGE_PATH)
+    process_pending_images()
