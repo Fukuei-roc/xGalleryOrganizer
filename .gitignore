@@ -1,7 +1,15 @@
 .venv/
 Prompt.md
 imageRecords.db
+
 # 忽略 pendingImages 資料夾中的所有內容
 pendingImages/*
-# 但保留資料夾本身（可選擇是否建立佔位檔）
 !pendingImages/.gitkeep
+
+# 忽略 membersOnly 資料夾中的所有內容
+membersOnly/*
+!membersOnly/.gitkeep
+
+# 忽略 publicPreview 資料夾中的所有內容
+publicPreview/*
+!publicPreview/.gitkeep
